@@ -1,0 +1,25 @@
+{
+"delimiter": "|",
+"profile":
+[
+ {
+  "field": "Transaction_date",
+  "type": "date",
+  "format": "MM/dd/yyyy",
+  "dqcheck":["date","null"]
+ },
+ {
+  "field": "Product",
+  "type": "categorical"
+ },
+ {
+  "field": "Price",
+  "type": "numeric"
+ },
+ {
+  "field": "Name",
+  "type": "text",
+  "dqcheck":["duplicate"]
+ }
+]
+}

@@ -1,0 +1,10 @@
+﻿Transaction_date|Product|Version|Price|Payment_Type|Name|City|State|Country|Account_Created|Last_Login
+2009-01-02|Lightroom|V5|1200|Mastercard|carolina|Basildon|England|United Kingdom|2009-01-02|
+2009-01-02|Lightroom|V5|1200|Visa|Betina|Parkville|MO|United States|2009-01-02|
+2009-01-02|Lightroom|V5|1200|Mastercard|Federica e Andrea|Astoria|OR|United States|2009-01-01|2009-01-03
+2009-01-03|Lightroom|V6|1200|Visa|Gouya|Echuca|Victoria|Australia|2005-09-25|2009-01-03
+2009-01-04|Photoshop|V6|3600|Visa|Gerd W|Cahaba Heights|AL|United States|2008-11-15|2009-01-04
+2009-01-04|Lightroom|V5|1200|Visa|LAURENCE|Mickleton|NJ|United States|2008-09-24|2009-01-04
+2009-01-04|Lightroom|V6|1200|Mastercard|Fleur|Peoria|IL|United States|2009-01-03|2009-01-04
+2009-01-02|Lightroom|V6|1200|Mastercard|adam|Martin|TN|United States|2009-01-02|2009-01-04
+2009-01-04|Lightroom|V5|1200|Mastercard|Renee Elisabeth|Tel Aviv|Tel Aviv|Israel|2009-01-04|

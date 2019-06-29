@@ -1,0 +1,245 @@
+#!/usr/bin/python
+
+'''
+  Purpose: Performs Data Quality and Data Profiling on a file based on JSON based Metadata.
+
+  MODIFICATION LOG
+  =========================================================================
+  Date     Who                Ver.  Proj             Reason
+  =========================================================================
+  20190319 Debo Mukherjee      v1   Hackathon       Initial draft
+'''
+
+import json
+from datetime import datetime
+import os
+import sys
+import getopt
+from pprint import pprint
+from pyspark.sql import SparkSession
+from dataQuality.checkDataQuality import DataValidation
+
+
+
+
+def getCommandLineArgs():
+    	global srcFileName
+    	global profileFileName
+
+    	srcFileName = None
+    	profileFileName = None
+
+    	try:
+    		opts, args = getopt.getopt(sys.argv[1:],"s:p:")
+    	except Exception as e:
+    		sys.exit("ERROR: Failed to parse argument - {e}".format(e=e))
+
+    	for opt,arg in opts:
+    		if (opt == "-s"):
+    			srcFileName = arg
+    		elif (opt == "-p"):
+    			profileFileName = arg
+
+    	if (srcFileName is None or srcFileName ==''):
+    		sys.exit("Source File name not provided with argument -s")
+    	elif (profileFileName is None or profileFileName ==''):
+    		sys.exit("Profile File name not provided with argument -p")
+
+    	return True
+
+
+
+
+def checkFileLocation():
+	if(not(os.path.isfile(srcFileName))):
+		sys.exit("ERROR: Source File '{srcFileName}' not found".format(srcFileName=srcFileName))
+	elif(not(os.path.isfile(profileFileName))):
+		sys.exit("ERROR: Profile File '{profileFileName}' not found".format(profileFileName=profileFileName))
+	else:
+		print("Found the Source File '{srcFileName}' and profile File '{profileFileName}'".format(srcFileName=srcFileName,profileFileName=profileFileName))
+
+	return True
+
+
+
+
+def parsePropertiesFile():
+	global data_properties
+	data_properties	= []
+	global fileDelimiter
+	try:
+		with open(profileFileName) as property_file:
+			data_item = json.load(property_file)
+	except Exception as e:
+		sys.exit("ERROR: Failed to read JSON property file - {e}".format(e=e))
+
+	for profile_data in data_item['profile']:
+		data_properties.append(profile_data)
+
+	fileDelimiter = data_item['delimiter']
+	return True
+
+
+
+
+def validatingFieldProperties():
+	defaultDateFormat = "yyyy-MM-dd"
+	defaultTimeStampFormat = "yyyy-MM-dd HH:mm:ss"
+	possibleDataTypes = ['text','date','timestamp','categorical','numeric']
+
+	for property in data_properties:
+		if(not set(['field','type']) <= set(property.keys())):
+			sys.exit("ERROR: Failed as the the property is missing keys 'field' or 'type' - {property}".format(property =  property.keys()))
+
+		elif(not property['type'] in possibleDataTypes):
+			sys.exit("ERROR: Failed as the data type mentioned '{dataType}' does not belong to {possibleDataTypes}".format(dataType = property['type'], possibleDataTypes = possibleDataTypes))
+
+		elif(property['type'] == 'date' and not set(['format']) <= set(property.keys())):
+			sys.exit("ERROR: Failed as the field type is set to 'date' but the format is missing - {property}".format(property =  property.keys()))
+
+		elif(property['type'] == 'timestamp' and not set(['format']) <= set(property.keys())):
+			sys.exit("ERROR: Failed as the field type is set to 'timestamp' but the format is missing - {property}".format(property =  property.keys()))
+
+	return True
+
+
+
+
+def invokeSparkSession():
+	global spark
+	spark = SparkSession.builder.appName("{srcFileName} Data Quality Check and Profiling at {dateTime}".format(srcFileName = srcFileName,dateTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S'))).getOrCreate()
+	return True
+
+
+
+
+def readFile():
+	global readFileDf
+	readFileDf = spark.read.option("delimiter",fileDelimiter).option("header",True).option("inferSchema",False).csv(srcFileName)
+
+
+
+
+def dataQualityCheck():
+    global dqDpResult
+    dqDpResult = []
+    print(data_properties)
+    for dataElement in data_properties:
+        if('dqcheck' in dataElement):
+            for dqcType in dataElement['dqcheck']:
+                dqc = DataValidation()
+                print(dqcType)
+                if(dqcType == 'date'):
+                    dataElement['dqcDateFlag'] = dqc.validateDate(spark, readFileDf , dataElement['field'],dataElement['format'])
+
+                elif(dqcType == 'numeric'):
+                    dataElement['dqcNumericFlag'] = dqc.validateInt(spark, readFileDf , dataElement['field'])
+
+                elif(dqcType == 'null'):
+                    dataElement['dqcNullFlag'] = dqc.validateNull(spark, readFileDf , dataElement['field'])
+
+                elif(dqcType == 'duplicate'):
+                    dataElement['dqcDuplicateFlag'] = dqc.validateDuplicate(spark, readFileDf , dataElement['field'])
+
+                dqDpResult.append(dataElement)
+        else:
+            dqDpResult.append(dataElement)
+        print dqDpResult
+
+		
+		
+		
+def dataProfiling():
+    for dataElement in data_properties:
+	    if(dataElement['type'] == 'date'):
+		    
+    
+
+
+
+def writeOutputDQC():
+    with open('data.json', 'w') as outfile:
+        json.dump(dqDpResult, outfile)
+
+
+
+
+'''
+###########################################
+The main script starts below
+###########################################
+'''
+def main():
+
+    	print(2*"\n")
+    	print("Starting Job to Profile File based on metadata")
+    	print("*****************************************************************************************************")
+
+
+    #Step1 - Check and Get Command line arguments
+    	print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Starting -- Validation of Command Line Arguments")
+    	getCommandLineArgs()
+    	print("The name of the Source file is   : " + srcFileName)
+    	print("The name of the Profile file is  : " + profileFileName)
+    	print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Finished -- Validation of Command Line Arguments")
+    	print("*****************************************************************************************************")
+
+
+    #Step2 - Check source file and profile file location
+    	print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Starting -- Validation of Source and Profile File Paths")
+    	checkFileLocation()
+    	print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Finished -- Validation of Source and Profile File Paths")
+    	print("*****************************************************************************************************")
+
+
+    #Step3 - Parsing the profile file
+    	print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Starting -- Parsing of Profile File")
+    	parsePropertiesFile()
+    	print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Finished -- Parsing of Profile File")
+    	print("*****************************************************************************************************")
+
+
+    #Step4 - Validating the properties file
+    	print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Starting -- Validation of Field Properties")
+    	validatingFieldProperties()
+    	print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Finished -- Validation of Field Properties")
+    	print("*****************************************************************************************************")
+
+
+    #Step5 - Invoke Spark Session
+        print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Starting -- Invoking Spark Session")
+        invokeSparkSession()
+        print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Finished -- Invoking Spark Session")
+        print("*****************************************************************************************************")
+
+
+    #Step6 - Reading the Source File in a Spark DataFrame
+    	print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Starting -- Reading Source File")
+    	readFile()
+    	print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Finished -- Reading Source File")
+    	print("*****************************************************************************************************")
+
+
+    #Step7 - Performing Data Quality Check
+        print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Starting -- Data Quality Check")
+        dataQualityCheck()
+        print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Finished -- Data Quality Check")
+        print("*****************************************************************************************************")
+
+
+    #Step8 - Performing Data Quality Check
+        print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Starting -- Write to JSON")
+        writeOutputDQC()
+        print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Finished -- Write to JSON")
+        print("*****************************************************************************************************")
+		
+		
+    #Step9 - Performing Data Profiling
+        print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Starting -- Data Profiling")
+        dataProfiling()
+        print("["+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"]"+"Finished -- Data Profiling")
+        print("*****************************************************************************************************")
+
+
+if(__name__ == "__main__"):
+	main()
