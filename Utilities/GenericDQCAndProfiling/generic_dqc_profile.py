@@ -32,11 +32,13 @@ def getCommandLineArgs():
 
     global srcFileName
     global profileFileName
+    global outputFileName
     srcFileName = None
     profileFileName = None
+    outputFileName = None
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"s:p:")
+        opts, args = getopt.getopt(sys.argv[1:],"s:p:o:")
     except Exception as e:
         logging.error("Invalid Arguments - {e}".format(e=e))
         sys.exit()
@@ -46,12 +48,18 @@ def getCommandLineArgs():
             srcFileName = arg
         elif (opt == "-p"):
             profileFileName = arg
+        elif (opt == "-o"):
+            outputFileName = arg
+            print outputFileName
 
     if (srcFileName is None or srcFileName ==''):
         logging.error("Source File name not provided with argument -s")
         sys.exit()
     elif (profileFileName is None or profileFileName ==''):
         logging.error("Profile File name not provided with argument -p")
+        sys.exit()
+    elif (outputFileName is None or outputFileName ==''):
+        logging.error("Output File name not provided with argument -o")
         sys.exit()
 
     logging.info("Finished -- Validation of Command Line Arguments")
@@ -79,6 +87,7 @@ def parsePropertiesFile():
     global data_properties
     data_properties    = []
     global fileDelimiter
+    global nullDefaultValue
     try:
         with open(profileFileName) as property_file:
             data_item = json.load(property_file)
@@ -89,6 +98,7 @@ def parsePropertiesFile():
         data_properties.append(profile_data)
 
     fileDelimiter = data_item['delimiter']
+    nullDefaultValue = data_item['null_default']
     return True
 
 
@@ -126,7 +136,7 @@ def invokeSparkSession():
 
 def readFile():
     global readFileDf
-    readFileDf = spark.read.option("delimiter",fileDelimiter).option("header",True).option("inferSchema",False).csv(srcFileName)
+    readFileDf = spark.read.option("delimiter",fileDelimiter).option("header",True).option("nullValue",nullDefaultValue).option("inferSchema",False).csv(srcFileName)
 
 
 
@@ -156,32 +166,33 @@ def dataQualityCheck():
 
 
 
+
 def dataProfiling():
     dpr = DataProfiling()
     for dataElement in data_properties:
         if(dataElement['type'] == 'date'):
-            dataElement['dpfDateMinValue'] = dpr.findMinDate(spark,readFileDf,dataElement['field'],dataElement['format'])
-            dataElement['dpfDateMaxValue'] = dpr.findMaxDate(spark,readFileDf,dataElement['field'],dataElement['format'])
+            dataElement['dpfDateMinValue'] = dpr.findMaxMinDate(spark,readFileDf,dataElement['field'],dataElement['format'][1])
+            dataElement['dpfDateMaxValue'] = dpr.findMaxMinDate(spark,readFileDf,dataElement['field'],dataElement['format'][0])
             dataElement['dpfDateNullCount'] = dpr.findNumberOfNulls(spark,readFileDf,dataElement['field'])
 
         elif(dataElement['type'] == 'numeric'):
-            dataElement['dpfNumMinValue'] = dpr.findMinNum(spark,readFileDf,dataElement['field'])
-            dataElement['dpfNumMaxValue'] = dpr.findMaxNum(spark,readFileDf,dataElement['field'])
+            dataElement['dpfNumMinValue'] = int(dpr.findMaxMinNum(spark,readFileDf,dataElement['field'])[1])
+            dataElement['dpfNumMaxValue'] = int(dpr.findMaxMinNum(spark,readFileDf,dataElement['field'])[0])
             dataElement['dpfNumNullCount'] = dpr.findNumberOfNulls(spark,readFileDf,dataElement['field'])
 
         elif(dataElement['type'] == 'text'):
-            dataElement['dpfTxtMinLen'] = dpr.findMinLength(spark,readFileDf,dataElement['field'])
-            dataElement['dpfTxtMaxLen'] = dpr.findMaxLength(spark,readFileDf,dataElement['field'])
+            dataElement['dpfTxtMinLen'] = int(dpr.findMaxMinLength(spark,readFileDf,dataElement['field'])[1])
+            dataElement['dpfTxtMaxLen'] = int(dpr.findMaxMinLength(spark,readFileDf,dataElement['field'])[0])
             dataElement['dpfTxtNullCount'] = dpr.findNumberOfNulls(spark,readFileDf,dataElement['field'])
 
         dqDpResult.append(dataElement)
-    print dqDpResult
 
 
 
 def writeOutputDQC():
-    with open('data.json', 'w') as outfile:
+    with open(outputFileName, 'w') as outfile:
          json.dump(dqDpResult, outfile)
+
 
 
 
