@@ -1,0 +1,128 @@
+{
+  "name": "Sample_input_1",
+  "delimiter": "|",
+  "source":["Transaction_date","Product","Version","Price","Payment_Type","Name","City","State","Country","Account_Created","Last_Login"],
+  "target":[
+    {
+      "name":"Product Name",
+      "type":"String"
+    },
+    {
+      "name":"Purchase Date",
+      "type":"String"
+    },
+    {
+      "name":"Purchase Price",
+      "type":"String"
+    },
+    {
+      "name":"Currency",
+      "type":"String"
+    },
+    {
+      "name":"Commission",
+      "type":"String"
+    },
+    {
+      "name":"Registration Date",
+      "type":"String"
+    },
+    {
+      "name":"Last Support Date",
+      "type":"String"
+    },
+    {
+      "name":"Country",
+      "type":"String"
+    },
+    {
+      "name":"Market",
+      "type":"String"
+    }
+  ],
+  "transformations":
+  [
+    {
+      "action": "default_value",
+      "source": [ "Price" ],
+      "target": "Purchase Price",
+      "value": "0"
+    },
+
+    {
+      "action": "concat",
+      "source": [
+        "Product",
+        "Version"
+      ],
+      "target": "Product Name",
+      "separator": " "
+    },
+
+    {
+      "action": "derived_column",
+      "source":  [ "Country" ],
+      "target": "Currency",
+      "condition": 
+      [
+        {
+          "field": "Country",
+          "condition": ["United States", "USA"],
+          "value": "USD"
+        },
+        {
+          "field": "Country",
+          "condition": [ "Germany" ],
+          "value": "Euro"
+        }
+      ]
+    },
+    {
+      "action": "Math",
+      "source":  [ "Price" ],
+      "target": "Commission",
+      "Expression": "[Price]*1/100"
+    },
+
+
+    {
+      "source": [ "Country" ],
+      "target": "Market",
+      "action": "Lookup",
+      "lookupTable": "Markets",
+      "default": "Unknown"
+    }
+  ],
+
+
+  "lookupTables":
+  {
+    "Markets": 
+    {
+      "rows": 
+      {
+        "United Kingdom": "EMEA",
+        "United States": "NA",
+        "Australia": "APAC",
+        "Israel": "EMEA",
+        "France": "EMEA",
+        "Netherlands": "EMEA",
+        "Ireland": "EMEA",
+        "Canada": "NA",
+        "India": "APAC",
+        "South Africa": "EMEA",
+        "Finland": "EMEA",
+        "Switzerland": "EMEA",
+        "Denmark": "EMEA",
+        "Belgium": "EMEA",
+        "Sweden": "EMEA",
+        "Norway": "EMEA",
+        "Italy": "EMEA",
+        "Germany": "EMEA",
+        "Spain": "EMEA",
+        "United Arab Emirates": "EMEA"
+      },
+      "defaultValue": "Other"
+    }
+  }
+}
