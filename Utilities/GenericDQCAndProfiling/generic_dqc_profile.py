@@ -50,7 +50,7 @@ def getCommandLineArgs():
             profileFileName = arg
         elif (opt == "-o"):
             outputFileName = arg
-            print outputFileName
+            print(outputFileName)
 
     if (srcFileName is None or srcFileName ==''):
         logging.error("Source File name not provided with argument -s")
@@ -162,7 +162,7 @@ def dataQualityCheck():
                     dataElement['dqcDuplicateFlag'] = dqc.validateDuplicate(spark, readFileDf , dataElement['field'])
 
         dqDpResult.append(dataElement)
-    print dqDpResult
+    print(dqDpResult)
 
 
 
